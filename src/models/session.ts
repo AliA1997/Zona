@@ -24,3 +24,6 @@ export type SignInResponse = {
   success: boolean;
   accessToken: string;
 };
+
+// Re-exported so no other module imports the Supabase SDK's types directly.
+export type { User as SupabaseUser } from '@supabase/supabase-js';
