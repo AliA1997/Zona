@@ -23,6 +23,10 @@ export function messageForError(error: unknown, provider: OAuthProvider): string
   return `Couldn't sign in with ${PROVIDER_LABELS[provider]}. Try again.`;
 }
 
+// `identity.id` is the single source of truth for "who am I" — pass it explicitly
+// to any API call that needs it. Never rely on the server's cached session (the
+// backend's UserCacheService is a global, not-per-user singleton — see the spec's
+// "Server-side identity is a process-wide singleton" section).
 export class AuthStore {
   identity?: StoredIdentity = undefined;
   sessionUser?: SessionUser = undefined;
@@ -39,7 +43,16 @@ export class AuthStore {
   }
 
   initializeFromStorage = async (): Promise<void> => {
-    const [token, identity] = await Promise.all([auth.getToken(), auth.getIdentity()]);
+    let token: string | null = null;
+    let identity: StoredIdentity | null = null;
+
+    try {
+      [token, identity] = await Promise.all([auth.getToken(), auth.getIdentity()]);
+    } catch {
+      // Storage is unreadable (unsupported platform, keychain fault). Treat as signed
+      // out rather than leaving `restoring` true forever, which would strand the app
+      // on the splash screen with no way to recover.
+    }
 
     // A token without an identity (or the reverse) is a half-written session — most
     // likely the app died mid sign-in. Neither half is usable on its own.
@@ -124,13 +137,19 @@ export class AuthStore {
       runInAction(() => {
         this.sessionUser = sessionUser;
       });
-    } catch {
-      // A failed refresh is not proof of a signed-out user (offline, 500, rate
-      // limit). Keep the cached identity rather than bouncing them to sign-in.
+    } catch (error) {
+      // Not proof of a signed-out user (offline, 500, rate limit) — keep the cached
+      // identity, but leave a trace, since nothing else surfaces this.
+      console.warn('[auth] background session refresh failed', error);
     }
   };
 
   resetAuthState = async (): Promise<void> => {
+    // No supabase.auth.signOut() call: with persistSession: false, Supabase's session
+    // lives in memory only and is never read again after the one-shot OAuth exchange —
+    // there's nothing there worth signing out of, and a network call here would risk
+    // this method throwing (and aborting before it clears the observables) if the
+    // device is offline when the user taps sign out.
     await this.clearStoredSession();
     runInAction(() => {
       this.identity = undefined;

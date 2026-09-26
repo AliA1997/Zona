@@ -35,4 +35,16 @@ describe('auth api client', () => {
     await expect(signIn(user)).resolves.toEqual({ success: true, accessToken: 'jwt-123' });
     expect(post).toHaveBeenCalledWith('/api/Auth/signin', toSignInPayload(user));
   });
+
+  it('throws when the response has no access token', async () => {
+    post.mockResolvedValue({ data: { success: true, accessToken: '' } });
+
+    await expect(signIn(user)).rejects.toThrow('no access token');
+  });
+
+  it('throws when success is false', async () => {
+    post.mockResolvedValue({ data: { success: false, accessToken: 'jwt-123' } });
+
+    await expect(signIn(user)).rejects.toThrow('no access token');
+  });
 });

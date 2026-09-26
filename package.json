@@ -38,7 +38,7 @@
     "react-native-worklets": "0.10.1"
   },
   "devDependencies": {
-    "@types/jest": "^30.0.0",
+    "@types/jest": "^29.5.14",
     "@types/react": "~19.2.2",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~57.0.2",
@@ -65,5 +65,8 @@
       "^mobx-react-lite$": "<rootDir>/node_modules/mobx-react-lite/dist/index.js"
     }
   },
-  "private": true
+  "private": true,
+  "engines": {
+    "node": ">=22.0.0"
+  }
 }

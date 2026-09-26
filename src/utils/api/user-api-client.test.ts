@@ -32,12 +32,26 @@ describe('sessionCheck', () => {
   it('throws when the result carries no id', async () => {
     post.mockResolvedValue({ data: { result: { username: 'atlas' } } });
 
-    await expect(sessionCheck('atlas@example.com')).rejects.toThrow('no user');
+    await expect(sessionCheck('atlas@example.com')).rejects.toThrow(
+      'Session check returned an incomplete user for atlas@example.com'
+    );
+  });
+
+  // A response with an id but missing username/email/avatar would otherwise pass
+  // the id-only check and persist an identity that violates its own declared shape.
+  it('throws when the result is missing username, email, or avatar', async () => {
+    post.mockResolvedValue({ data: { result: { id: 'u-1' } } });
+
+    await expect(sessionCheck('atlas@example.com')).rejects.toThrow(
+      'Session check returned an incomplete user for atlas@example.com'
+    );
   });
 
   it('throws when the response has no result at all', async () => {
     post.mockResolvedValue({ data: {} });
 
-    await expect(sessionCheck('atlas@example.com')).rejects.toThrow('no user');
+    await expect(sessionCheck('atlas@example.com')).rejects.toThrow(
+      'Session check returned no user for atlas@example.com'
+    );
   });
 });

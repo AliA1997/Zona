@@ -8,8 +8,11 @@ export async function sessionCheck(email: string): Promise<SessionUser> {
   });
 
   const user = response.data?.result;
-  if (!user?.id) {
-    throw new Error('Session check returned no user.');
+  if (!user) {
+    throw new Error(`Session check returned no user for ${email}.`);
+  }
+  if (!user.id || !user.username || !user.email || !user.avatar) {
+    throw new Error(`Session check returned an incomplete user for ${email}.`);
   }
 
   return user;

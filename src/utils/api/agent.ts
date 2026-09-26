@@ -9,7 +9,7 @@ export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://api
 let unauthorizedHandler: (() => void) | null = null;
 
 // agent.ts must not import the store — the store imports these api clients, so the
-// reverse import would be a cycle. stores/index.ts registers the handler at startup.
+// reverse import would be a cycle. stores/index.tsx registers the handler at startup.
 export function setUnauthorizedHandler(fn: () => void): void {
   unauthorizedHandler = fn ?? null;
 }

@@ -87,11 +87,23 @@ describe('AuthStore', () => {
       mockedAuth.getToken.mockResolvedValue('jwt-123');
       mockedAuth.getIdentity.mockResolvedValue(identity);
       mockedSessionCheck.mockRejectedValue(new Error('offline'));
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
       await store.initializeFromStorage();
       await Promise.resolve();
 
       expect(store.isAuthenticated).toBe(true);
+      expect(warnSpy).toHaveBeenCalledWith('[auth] background session refresh failed', expect.any(Error));
+      warnSpy.mockRestore();
+    });
+
+    it('stops restoring even when storage reads fail', async () => {
+      mockedAuth.getToken.mockRejectedValue(new Error('keychain unavailable'));
+
+      await store.initializeFromStorage();
+
+      expect(store.restoring).toBe(false);
+      expect(store.isAuthenticated).toBe(false);
     });
   });
 

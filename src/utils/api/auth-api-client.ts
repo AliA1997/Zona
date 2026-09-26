@@ -11,5 +11,11 @@ export function toSignInPayload(user: SupabaseUser): { values: Record<string, un
 
 export async function signIn(user: SupabaseUser): Promise<SignInResponse> {
   const response = await agent.post<SignInResponse>('/api/Auth/signin', toSignInPayload(user));
+  const { success, accessToken } = response.data;
+
+  if (!success || !accessToken) {
+    throw new Error('Sign-in returned no access token.');
+  }
+
   return response.data;
 }
