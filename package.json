@@ -24,6 +24,8 @@
     "expo-symbols": "~57.0.3",
     "expo-system-ui": "~57.0.4",
     "expo-web-browser": "~57.0.3",
+    "mobx": "^7.0.5",
+    "mobx-react-lite": "^5.1.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.3",
@@ -57,7 +59,11 @@
     "preset": "jest-expo",
     "transformIgnorePatterns": [
       "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|react-native-svg)"
-    ]
+    ],
+    "moduleNameMapper": {
+      "^mobx$": "<rootDir>/node_modules/mobx/dist/index.js",
+      "^mobx-react-lite$": "<rootDir>/node_modules/mobx-react-lite/dist/index.js"
+    }
   },
   "private": true
 }
