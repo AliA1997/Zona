@@ -368,9 +368,11 @@ flash for a returning user.
 
 ### Sign-out
 
-`resetAuthState()` clears both SecureStore keys, calls `supabase.auth.signOut()` (local only,
-given D2), clears the observables, and the root gate redirects to `/sign-in`. The Profile
-screen button that *calls* this is out of scope here; the store method is built now.
+`resetAuthState()` clears both SecureStore keys, clears the observables, and the root gate
+redirects to `/sign-in`. It does not call `supabase.auth.signOut()`: given D2's
+`persistSession: false`, Supabase holds nothing worth signing out of once the one-shot OAuth
+exchange completes, so there's no session there to clear. The Profile screen button that
+*calls* this is out of scope here; the store method is built now.
 
 ### A 401 on any later request
 
