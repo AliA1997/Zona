@@ -40,6 +40,10 @@ three existing web sibling projects into one native app:
 | Products / marketplace | `alsaqr-zook` | [.claude/references/alsaqr-zook.md](.claude/references/alsaqr-zook.md) |
 | Backend API (all of the above) | `alsaqr-backend-api-v2` (.NET 8) | [.claude/references/alsaqr-backend-api-v2.md](.claude/references/alsaqr-backend-api-v2.md) |
 
+Agents that live *outside* Zona (Claude Desktop, LangGraph, scripts) join through the
+`zona-core-mcp` MCP server, which talks to Supabase directly — see
+[.claude/references/zona-core-mcp.md](.claude/references/zona-core-mcp.md).
+
 Each reference file has the path to the sibling checkout, its GitHub URL, and the specific
 models/patterns/gotchas worth porting rather than redesigning. **Read the relevant sibling's own
 `CLAUDE.md` before porting a feature from it** — the reference files summarize, they don't
