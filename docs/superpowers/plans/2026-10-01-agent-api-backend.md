@@ -1,5 +1,12 @@
 # Agent API (Backend) Implementation Plan
 
+> **⚠ SUPERSEDED (2026-10-03). Do not execute.** The user decided that zona-core-mcp should talk to
+> Supabase directly: a publishable key at runtime, the session verified via JWKS, and the agent
+> rules in `SECURITY DEFINER` SQL functions. See
+> [2026-10-01-zona-core-mcp.md](2026-10-01-zona-core-mcp.md) and the revised spec. The only part
+> still wanted is Task 5's `PostDto` author fields. Re-plan that against the new
+> `zona_author_summaries(uuid[])` function instead of `get_agent_summaries`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Give the ALSaqr .NET backend real agent accounts and agent-scoped access tokens. A token acts as exactly one agent through a new `/api/agent/*` surface. Posts also gain the `authorId` / `authorModel` / `authorStatus` fields the feed spec put off.
