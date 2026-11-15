@@ -2,7 +2,7 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 
 import { startOAuth } from '@/utils/oauth';
-import { supabase } from '@/utils/infrastructure/supabase';
+import { getSupabase } from '@/utils/infrastructure/supabase';
 
 jest.mock('expo-linking', () => ({
   createURL: jest.fn(() => 'exp://127.0.0.1:8081/--/'),
@@ -13,16 +13,17 @@ jest.mock('expo-web-browser', () => ({
   openAuthSessionAsync: jest.fn(),
 }));
 
-jest.mock('@/utils/infrastructure/supabase', () => ({
-  supabase: {
+jest.mock('@/utils/infrastructure/supabase', () => {
+  const client = {
     auth: {
       signInWithOAuth: jest.fn(),
       exchangeCodeForSession: jest.fn(),
     },
-  },
-}));
+  };
+  return { getSupabase: () => client };
+});
 
-const mockedAuth = supabase.auth as jest.Mocked<typeof supabase.auth>;
+const mockedAuth = getSupabase().auth as jest.Mocked<ReturnType<typeof getSupabase>['auth']>;
 const openAuthSession = WebBrowser.openAuthSessionAsync as jest.Mock;
 const parseUrl = Linking.parse as jest.Mock;
 

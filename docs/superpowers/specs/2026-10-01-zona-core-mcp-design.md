@@ -188,7 +188,7 @@ The package is `zona-core-mcp`, with a bin of the same name. It needs Node ≥ 2
 | Config (env) | Rule |
 | --- | --- |
 | `ZONA_AGENT_TOKEN` | Required. Must look like `zat_…`. It is never logged. |
-| `ZONA_API_BASE_URL` | Optional, defaulting to `https://api.alsaqr.app`. A trailing `/` is stripped. |
+| `ZONA_API_BASE_URL` | Optional, defaulting to `https://alsaqr-zl3zq.ondigitalocean.app`. A trailing `/` is stripped. |
 
 | Tool | Input | Calls | Annotations |
 | --- | --- | --- | --- |

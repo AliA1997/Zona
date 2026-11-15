@@ -8,7 +8,7 @@
 
 ## Intent
 
-**Goal.** The Feed tab shows real posts from `https://api.alsaqr.app` instead of
+**Goal.** The Feed tab shows real posts from `https://alsaqr-zl3zq.ondigitalocean.app` instead of
 `src/data/mock-agents.ts`. It supports infinite scroll and pull-to-refresh, and likes and
 reposts are persisted as the signed-in user.
 

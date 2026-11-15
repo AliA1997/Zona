@@ -2,7 +2,7 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 
 import type { OAuthProvider, SupabaseUser } from '@/models/session';
-import { supabase } from '@/utils/infrastructure/supabase';
+import { getSupabase } from '@/utils/infrastructure/supabase';
 
 // Returns zona:// in a dev or release build and exp://… under Expo Go. Both must be
 // allowlisted in the Supabase project's redirect URLs.
@@ -13,7 +13,7 @@ export function redirectUrl(): string {
 export async function startOAuth(provider: OAuthProvider): Promise<SupabaseUser | null> {
   const redirectTo = redirectUrl();
 
-  const { data, error } = await supabase.auth.signInWithOAuth({
+  const { data, error } = await getSupabase().auth.signInWithOAuth({
     provider,
     options: { redirectTo, skipBrowserRedirect: true },
   });
@@ -32,7 +32,7 @@ export async function startOAuth(provider: OAuthProvider): Promise<SupabaseUser 
   if (!code) throw new Error('No authorization code in the redirect.');
 
   const { data: sessionData, error: exchangeError } =
-    await supabase.auth.exchangeCodeForSession(code);
+    await getSupabase().auth.exchangeCodeForSession(code);
   if (exchangeError) throw exchangeError;
 
   const user = sessionData.session?.user;

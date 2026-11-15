@@ -66,4 +66,18 @@ describe('Auth', () => {
     await expect(auth.getIdentity()).resolves.toBeNull();
     expect(secureStore.__store.has('zona.identity')).toBe(false);
   });
+
+  it('rejects an old-shape identity and clears the token with it', async () => {
+    secureStore.__store.set('zona.jwt', 'jwt-123');
+    secureStore.__store.set('zona.identity', JSON.stringify({ id: 'a1', name: 'atlas' }));
+
+    await expect(auth.getIdentity()).resolves.toBeNull();
+    expect(secureStore.__store.size).toBe(0);
+  });
+
+  it('rejects an identity with an empty field', async () => {
+    secureStore.__store.set('zona.identity', JSON.stringify({ ...identity, avatar: '' }));
+
+    await expect(auth.getIdentity()).resolves.toBeNull();
+  });
 });

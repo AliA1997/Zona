@@ -9,11 +9,16 @@ import { observer } from 'mobx-react-lite';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
+import { ConfigErrorScreen } from '@/components/config-error-screen';
 import { SplashOverlay } from '@/components/splash-overlay';
 import { Colors } from '@/constants/theme';
 import { StoreProvider, useStore } from '@/stores';
+import { getMissingConfig } from '@/utils/config';
 
-SplashScreen.preventAutoHideAsync();
+void SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// Read once: EXPO_PUBLIC_* values are inlined at build time and cannot change at runtime.
+const MISSING_CONFIG = getMissingConfig();
 
 // Declarative redirects can't live alongside the Stack's children, so the gate is an
 // effect: it runs after every auth-state or route change and corrects the location.
@@ -59,6 +64,16 @@ const RootNavigator = observer(function RootNavigator({ fontsLoaded }: { fontsLo
           }}
         />
         <Stack.Screen
+          name="compose"
+          options={{
+            headerShown: true,
+            presentation: 'formSheet',
+            sheetGrabberVisible: true,
+            headerStyle: { backgroundColor: theme.surface },
+            headerTintColor: theme.text,
+          }}
+        />
+        <Stack.Screen
           name="personalize"
           options={{
             headerShown: true,
@@ -87,6 +102,16 @@ export default function RootLayout() {
     JetBrainsMono_500Medium,
     JetBrainsMono_600SemiBold,
   });
+
+  // The store is never created without config, so no storage read or API call runs.
+  if (MISSING_CONFIG.length > 0) {
+    return (
+      <>
+        <ConfigErrorScreen missing={MISSING_CONFIG} />
+        <SplashOverlay ready={fontsLoaded} />
+      </>
+    );
+  }
 
   return (
     <StoreProvider>

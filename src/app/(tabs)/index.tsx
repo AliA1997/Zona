@@ -1,14 +1,19 @@
-import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { observer } from 'mobx-react-lite';
+import { useEffect } from 'react';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AgentAvatar } from '@/components/agent-avatar';
+import { AuthorAvatar } from '@/components/author-avatar';
+import { AuthorTag } from '@/components/author-tag';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { getAgent, posts as initialPosts } from '@/data/mock-agents';
+import type { FeedPost } from '@/models/social';
+import { useStore } from '@/stores';
+import { formatRelativeTime } from '@/utils/relative-time';
 
 function HeartIcon({ color, filled }: { color: string; filled: boolean }) {
   return (
@@ -42,16 +47,62 @@ function ComposeIcon({ color }: { color: string }) {
   );
 }
 
-export default function FeedScreen() {
+export default observer(function FeedScreen() {
   const theme = useTheme();
-  const [likes, setLikes] = useState<Record<string, { liked: boolean; count: number }>>({});
+  const router = useRouter();
+  const { authStore, feedStore } = useStore();
+  const viewerId = authStore.identity?.id;
 
-  function toggleLike(postId: string, baseCount: number) {
-    setLikes((prev) => {
-      const current = prev[postId] ?? { liked: false, count: baseCount };
-      return { ...prev, [postId]: { liked: !current.liked, count: current.count + (current.liked ? -1 : 1) } };
-    });
-  }
+  // Reload whenever the signed-in user changes (the store resets on identity change).
+  useEffect(() => {
+    if (viewerId) void feedStore.loadFirstPage();
+  }, [viewerId, feedStore]);
+
+  const renderItem = ({ item }: { item: FeedPost }) => (
+    <ThemedView type="surface" style={[styles.card, { borderColor: theme.hairline }]}>
+      <View style={styles.cardHeader}>
+        <AuthorAvatar author={item.author} size={38} />
+        <View style={styles.cardHeaderText}>
+          <ThemedText type="h3" numberOfLines={1}>
+            {item.author.username}
+          </ThemedText>
+          <ThemedText type="mono" themeColor="textTertiary" numberOfLines={1}>
+            {item.author.handle} · {formatRelativeTime(item.createdAt)}
+          </ThemedText>
+        </View>
+        <AuthorTag author={item.author} />
+      </View>
+
+      <ThemedText type="body">{item.body}</ThemedText>
+
+      <View style={[styles.cardFooter, { borderTopColor: theme.hairline }]}>
+        <Pressable
+          style={styles.footerAction}
+          accessibilityRole="button"
+          accessibilityLabel={item.likedByMe ? 'Unlike' : 'Like'}
+          onPress={() => void feedStore.toggleLike(item.id)}>
+          <HeartIcon color={theme.rose} filled={item.likedByMe} />
+          <ThemedText type="mono" themeColor={item.likedByMe ? 'rose' : 'textTertiary'}>
+            {item.likeCount}
+          </ThemedText>
+        </Pressable>
+        <View style={styles.footerAction}>
+          <ReplyIcon color={theme.textTertiary} />
+          <ThemedText type="mono" themeColor="textTertiary">
+            {item.replyCount}
+          </ThemedText>
+        </View>
+        <View style={styles.footerAction}>
+          <RepostIcon color={theme.textTertiary} />
+          <ThemedText type="mono" themeColor="textTertiary">
+            {item.repostCount}
+          </ThemedText>
+        </View>
+      </View>
+    </ThemedView>
+  );
+
+  const posts = feedStore.posts;
 
   return (
     <ThemedView style={styles.container}>
@@ -62,68 +113,80 @@ export default function FeedScreen() {
           </ThemedText>
         </View>
 
+        {feedStore.error && posts.length > 0 ? (
+          <ThemedText type="small" themeColor="red" style={styles.banner}>
+            {feedStore.error} Pull to retry.
+          </ThemedText>
+        ) : null}
+
         <FlatList
-          data={initialPosts}
+          data={posts}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => {
-            const agent = getAgent(item.agentId);
-            if (!agent) return null;
-            const like = likes[item.id] ?? { liked: false, count: item.likes };
-
-            return (
-              <ThemedView type="surface" style={[styles.card, { borderColor: theme.hairline }]}>
-                <View style={styles.cardHeader}>
-                  <AgentAvatar agentId={agent.id} status={agent.status} size={38} />
-                  <View style={styles.cardHeaderText}>
-                    <ThemedText type="h3">{agent.name}</ThemedText>
-                    <ThemedText type="mono" themeColor="textTertiary">
-                      {agent.handle} · {item.timestamp}
-                    </ThemedText>
-                  </View>
-                  <ThemedView type="surfaceRaised" style={styles.modelTag}>
-                    <ThemedText type="mono" themeColor="textSecondary">
-                      {agent.model}
-                    </ThemedText>
-                  </ThemedView>
-                </View>
-
-                <ThemedText type="body">{item.body}</ThemedText>
-
-                <View style={[styles.cardFooter, { borderTopColor: theme.hairline }]}>
-                  <Pressable style={styles.footerAction} onPress={() => toggleLike(item.id, item.likes)}>
-                    <HeartIcon color={theme.rose} filled={like.liked} />
-                    <ThemedText type="mono" themeColor={like.liked ? 'rose' : 'textTertiary'}>
-                      {like.count}
-                    </ThemedText>
-                  </Pressable>
-                  <View style={styles.footerAction}>
-                    <ReplyIcon color={theme.textTertiary} />
-                    <ThemedText type="mono" themeColor="textTertiary">
-                      {item.replies}
-                    </ThemedText>
-                  </View>
-                  <View style={styles.footerAction}>
-                    <RepostIcon color={theme.textTertiary} />
-                    <ThemedText type="mono" themeColor="textTertiary">
-                      {item.reposts}
-                    </ThemedText>
-                  </View>
-                </View>
-              </ThemedView>
-            );
-          }}
+          renderItem={renderItem}
+          onEndReachedThreshold={0.5}
+          onEndReached={() => void feedStore.loadNextPage()}
+          refreshControl={
+            <RefreshControl
+              refreshing={feedStore.refreshing}
+              tintColor={theme.accent}
+              onRefresh={() => void feedStore.loadFirstPage('refresh')}
+            />
+          }
+          ListEmptyComponent={
+            feedStore.loading ? (
+              <ActivityIndicator color={theme.accent} style={styles.empty} />
+            ) : feedStore.error ? (
+              <View style={styles.empty}>
+                <ThemedText type="body" themeColor="textSecondary">
+                  {feedStore.error}
+                </ThemedText>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => void feedStore.loadFirstPage()}
+                  style={[styles.pill, { borderColor: theme.accentStrong }]}>
+                  <ThemedText type="small" themeColor="accent">
+                    Try again
+                  </ThemedText>
+                </Pressable>
+              </View>
+            ) : (
+              <ThemedText type="body" themeColor="textTertiary" style={styles.empty}>
+                No posts yet. Tap + to write the first one.
+              </ThemedText>
+            )
+          }
+          ListFooterComponent={
+            feedStore.loadingMore ? (
+              <ActivityIndicator color={theme.accent} style={styles.footer} />
+            ) : feedStore.nextPageError ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => void feedStore.retryNextPage()}
+                style={[styles.pill, styles.footer, { borderColor: theme.accentStrong }]}>
+                <ThemedText type="small" themeColor="accent">
+                  Try again
+                </ThemedText>
+              </Pressable>
+            ) : undefined
+          }
         />
 
         <Pressable
+          accessibilityRole="button"
           accessibilityLabel="Compose"
-          style={[styles.composeButton, { backgroundColor: theme.accent }]}>
+          onPress={() => router.push('/compose')}
+          style={({ pressed }) => [
+            styles.composeButton,
+            { backgroundColor: theme.accent, shadowColor: theme.accent },
+            pressed && styles.pressed,
+          ]}>
           <ComposeIcon color={theme.accentOnFill} />
         </Pressable>
       </SafeAreaView>
     </ThemedView>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -160,10 +223,29 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
-  modelTag: {
+  banner: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.sm,
+  },
+  empty: {
+    alignItems: 'center',
+    gap: Spacing.sm2,
+    textAlign: 'center',
+    paddingVertical: Spacing.xl,
+  },
+  footer: {
+    alignSelf: 'center',
+    marginVertical: Spacing.md,
+  },
+  pill: {
+    borderWidth: 1.5,
     borderRadius: Radius.pill,
-    paddingVertical: 4,
-    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md2,
+  },
+  pressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.96 }],
   },
   cardFooter: {
     flexDirection: 'row',
@@ -185,7 +267,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#2FD6C0',
     shadowOpacity: 0.35,
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 6 },

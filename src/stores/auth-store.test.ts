@@ -5,6 +5,10 @@ import { auth } from '@/utils/auth';
 import { startOAuth } from '@/utils/oauth';
 
 jest.mock('@/utils/oauth', () => ({ startOAuth: jest.fn() }));
+jest.mock('@/utils/infrastructure/supabase', () => {
+  const client = { auth: { signOut: jest.fn(() => Promise.resolve({ error: null })) } };
+  return { getSupabase: () => client };
+});
 jest.mock('@/utils/api/auth-api-client', () => ({ signIn: jest.fn() }));
 jest.mock('@/utils/api/user-api-client', () => ({ sessionCheck: jest.fn() }));
 jest.mock('@/utils/auth', () => ({
@@ -47,6 +51,8 @@ describe('AuthStore', () => {
     mockedSessionCheck.mockResolvedValue(sessionUser);
     mockedAuth.getToken.mockResolvedValue(null);
     mockedAuth.getIdentity.mockResolvedValue(null);
+    mockedAuth.setIdentity.mockResolvedValue(undefined);
+    mockedAuth.clearToken.mockResolvedValue(undefined);
     store = new AuthStore();
   });
 
@@ -166,9 +172,39 @@ describe('AuthStore', () => {
       expect(store.isAuthenticated).toBe(false);
       expect(store.authError).toBeDefined();
     });
+
+    it('clears both halves when the identity write fails', async () => {
+      mockedAuth.setIdentity.mockRejectedValue(new Error('keychain full'));
+
+      await store.signInWithProvider('discord');
+
+      expect(mockedAuth.clearToken).toHaveBeenCalled();
+      expect(mockedAuth.clearIdentity).toHaveBeenCalled();
+      expect(store.isAuthenticated).toBe(false);
+      expect(store.authError).toBeDefined();
+    });
   });
 
   describe('resetAuthState', () => {
+    it('signs out of Supabase locally, best-effort', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { getSupabase } = require('@/utils/infrastructure/supabase');
+
+      await store.resetAuthState();
+
+      expect(getSupabase().auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+    });
+
+    it('still clears observables when storage deletes fail', async () => {
+      mockedAuth.getToken.mockResolvedValue('jwt-123');
+      mockedAuth.getIdentity.mockResolvedValue(identity);
+      await store.initializeFromStorage();
+      mockedAuth.clearToken.mockRejectedValue(new Error('keychain fault'));
+
+      await expect(store.resetAuthState()).rejects.toThrow('keychain fault');
+      expect(store.isAuthenticated).toBe(false);
+    });
+
     it('clears storage and observables', async () => {
       mockedAuth.getToken.mockResolvedValue('jwt-123');
       mockedAuth.getIdentity.mockResolvedValue(identity);

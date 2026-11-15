@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    # Dummy values only: CI never talks to a real backend, so it needs no secrets.
+    env:
+      EXPO_PUBLIC_API_BASE_URL: https://ci.invalid
+      EXPO_PUBLIC_SUPABASE_URL: https://ci.invalid
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ci-dummy-key
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm test -- --ci
