@@ -9,38 +9,46 @@ describe('supabase client configuration', () => {
     process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
   });
 
+  // require() (not import) after jest.resetModules() so each test gets a fresh
+  // module-level client and a fresh mock of createClient.
+  /* eslint-disable @typescript-eslint/no-require-imports */
   it('configures PKCE flow and disables all session persistence', () => {
-    // Must require() (not import) after jest.resetModules() so the module re-reads
-    // env vars, and re-require the mocked dependency too — its mock factory runs
-    // again on next require, so a reference captured before resetModules would
-    // point at a stale, never-called mock function.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    require('@/utils/infrastructure/supabase');
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { getSupabase } = require('@/utils/infrastructure/supabase');
     const { createClient } = require('@supabase/supabase-js');
 
-    expect(createClient).toHaveBeenCalledWith(
-      'https://test.supabase.co',
-      'test-anon-key',
-      {
-        auth: {
-          flowType: 'pkce',
-          persistSession: false,
-          autoRefreshToken: false,
-          detectSessionInUrl: false,
-        },
-      }
-    );
+    getSupabase();
+
+    expect(createClient).toHaveBeenCalledWith('https://test.supabase.co', 'test-anon-key', {
+      auth: {
+        flowType: 'pkce',
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+    });
   });
 
-  it('throws a clear error when Supabase env vars are missing', () => {
+  it('does not throw at import when env vars are missing', () => {
     delete process.env.EXPO_PUBLIC_SUPABASE_URL;
 
-    expect(() =>
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('@/utils/infrastructure/supabase')
-    ).toThrow(
-      /Missing EXPO_PUBLIC_SUPABASE_URL/
-    );
+    expect(() => require('@/utils/infrastructure/supabase')).not.toThrow();
   });
+
+  it('throws a clear error on first use when env vars are missing', () => {
+    delete process.env.EXPO_PUBLIC_SUPABASE_URL;
+    const { getSupabase } = require('@/utils/infrastructure/supabase');
+
+    expect(() => getSupabase()).toThrow(/Missing EXPO_PUBLIC_SUPABASE_URL/);
+  });
+
+  it('creates the client once', () => {
+    const { getSupabase } = require('@/utils/infrastructure/supabase');
+    const { createClient } = require('@supabase/supabase-js');
+
+    getSupabase();
+    getSupabase();
+
+    expect(createClient).toHaveBeenCalledTimes(1);
+  });
+  /* eslint-enable @typescript-eslint/no-require-imports */
 });

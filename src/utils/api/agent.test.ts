@@ -31,9 +31,9 @@ describe('agent', () => {
     setUnauthorizedHandler(() => {});
   });
 
-  it('defaults the base URL to the production API', () => {
-    // EXPO_PUBLIC_API_BASE_URL is unset under Jest, so the fallback applies.
-    expect(API_BASE_URL).toBe('https://api.alsaqr.app');
+  it('has no production fallback for the base URL', () => {
+    // EXPO_PUBLIC_API_BASE_URL is unset under Jest.
+    expect(API_BASE_URL).toBe('');
   });
 
   it('attaches a bearer header when a token is stored', async () => {
@@ -66,9 +66,22 @@ describe('agent', () => {
     expect(onUnauthorized).not.toHaveBeenCalled();
   });
 
-  it('rejects rather than throwing when no handler is registered', async () => {
-    setUnauthorizedHandler(undefined as unknown as () => void);
+  it('rejects rather than throwing when the handler was unregistered', async () => {
+    const onUnauthorized = jest.fn();
+    const unregister = setUnauthorizedHandler(onUnauthorized);
+    unregister();
 
     await expect(handleResponseError(errorWithStatus(401))).rejects.toBeDefined();
+    expect(onUnauthorized).not.toHaveBeenCalled();
+  });
+
+  it('a stale unregister does not remove a newer handler', async () => {
+    const unregisterOld = setUnauthorizedHandler(() => {});
+    const onUnauthorized = jest.fn();
+    setUnauthorizedHandler(onUnauthorized);
+    unregisterOld();
+
+    await expect(handleResponseError(errorWithStatus(401))).rejects.toBeDefined();
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
   });
 });

@@ -2,16 +2,22 @@ import { create as createAxios, AxiosError, InternalAxiosRequestConfig } from 'a
 
 import { auth } from '@/utils/auth';
 
-// Unset in tests and in any environment missing .env.local; the production API is
-// the only sensible default and beats failing against a relative URL.
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://api.alsaqr.app';
+// No production fallback: a build missing this variable must not quietly talk to
+// production. The root layout blocks the app with an "app not configured" screen
+// when it is unset, so the empty string is never used for a real request.
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? '';
 
 let unauthorizedHandler: (() => void) | null = null;
 
 // agent.ts must not import the store — the store imports these api clients, so the
 // reverse import would be a cycle. stores/index.tsx registers the handler at startup.
-export function setUnauthorizedHandler(fn: () => void): void {
-  unauthorizedHandler = fn ?? null;
+// Returns an unregister function; it only clears the handler if it is still `fn`,
+// so a stale cleanup cannot remove a newer registration.
+export function setUnauthorizedHandler(fn: () => void): () => void {
+  unauthorizedHandler = fn;
+  return () => {
+    if (unauthorizedHandler === fn) unauthorizedHandler = null;
+  };
 }
 
 export async function attachBearer(

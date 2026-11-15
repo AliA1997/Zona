@@ -1,16 +1,48 @@
 import { Link } from 'expo-router';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AgentAvatar } from '@/components/agent-avatar';
+import { AuthorAvatar } from '@/components/author-avatar';
+import { AuthorTag } from '@/components/author-tag';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { getAgent, threads } from '@/data/mock-agents';
+import type { MessageThreadDto } from '@/models/social';
+import { getMessageThreads } from '@/utils/api/social-api-client';
+import { formatRelativeTime } from '@/utils/relative-time';
+import { toAuthor } from '@/utils/to-feed-post';
 
 export default function MessagesScreen() {
   const theme = useTheme();
+  const [threads, setThreads] = useState<MessageThreadDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>();
+
+  // State is only set after the request settles, so the mount effect never sets
+  // state synchronously; `reload` shows the spinner first.
+  const load = useCallback(
+    () =>
+      getMessageThreads()
+        .then((result) => {
+          setThreads(result.items);
+          setError(undefined);
+        })
+        .catch(() => setError("Couldn't load your messages."))
+        .finally(() => setLoading(false)),
+    []
+  );
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const reload = () => {
+    setLoading(true);
+    setError(undefined);
+    void load();
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -23,33 +55,76 @@ export default function MessagesScreen() {
           data={threads}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl refreshing={loading && threads.length > 0} tintColor={theme.accent} onRefresh={reload} />
+          }
           renderItem={({ item }) => {
-            const agent = getAgent(item.agentId);
-            if (!agent) return null;
+            const author = toAuthor({
+              id: item.receiverId,
+              username: item.receiverUsername,
+              avatar: item.receiverProfileImage,
+              isAgent: item.receiverIsAgent,
+              model: item.receiverAgentModel,
+            });
 
             return (
-              <Link href={{ pathname: '/chat/[id]', params: { id: item.id } }} asChild>
+              <Link
+                href={{
+                  pathname: '/chat/[id]',
+                  params: {
+                    id: item.receiverId,
+                    username: author.username,
+                    avatar: author.avatar ?? '',
+                    isAgent: author.isAgent ? '1' : '0',
+                    model: author.model ?? '',
+                  },
+                }}
+                asChild>
                 <Pressable style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
-                  <AgentAvatar agentId={agent.id} status={agent.status} size={44} />
+                  <AuthorAvatar author={author} size={44} />
                   <View style={styles.rowText}>
                     <View style={styles.rowTop}>
-                      <ThemedText type="h3">{agent.name}</ThemedText>
+                      <ThemedText type="h3" numberOfLines={1} style={styles.rowName}>
+                        {author.username}
+                      </ThemedText>
                       <ThemedText type="mono" themeColor="textTertiary">
-                        {item.timestamp}
+                        {formatRelativeTime(item.lastMessageDate)}
                       </ThemedText>
                     </View>
-                    <ThemedText
-                      type="body"
-                      themeColor={item.unread ? 'text' : 'textSecondary'}
-                      numberOfLines={1}>
-                      {item.lastMessage}
-                    </ThemedText>
+                    <View style={styles.rowBottom}>
+                      <AuthorTag author={author} />
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {item.messageCount ?? 0} messages
+                      </ThemedText>
+                    </View>
                   </View>
-                  {item.unread ? <View style={[styles.unreadDot, { backgroundColor: theme.accent }]} /> : null}
                 </Pressable>
               </Link>
             );
           }}
+          ListEmptyComponent={
+            loading ? (
+              <ActivityIndicator color={theme.accent} style={styles.empty} />
+            ) : error ? (
+              <View style={styles.empty}>
+                <ThemedText type="body" themeColor="textSecondary">
+                  {error}
+                </ThemedText>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={reload}
+                  style={[styles.pill, { borderColor: theme.accentStrong }]}>
+                  <ThemedText type="small" themeColor="accent">
+                    Try again
+                  </ThemedText>
+                </Pressable>
+              </View>
+            ) : (
+              <ThemedText type="body" themeColor="textTertiary" style={styles.empty}>
+                No conversations yet.
+              </ThemedText>
+            )
+          }
           ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: theme.hairline }]} />}
         />
       </SafeAreaView>
@@ -83,16 +158,32 @@ const styles = StyleSheet.create({
   },
   rowText: {
     flex: 1,
-    gap: 2,
+    gap: Spacing.xs,
   },
   rowTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: Spacing.sm,
   },
-  unreadDot: {
-    width: 8,
-    height: 8,
+  rowName: {
+    flexShrink: 1,
+  },
+  rowBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  empty: {
+    alignItems: 'center',
+    gap: Spacing.sm2,
+    textAlign: 'center',
+    paddingVertical: Spacing.xl,
+  },
+  pill: {
+    borderWidth: 1.5,
     borderRadius: Radius.pill,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md2,
   },
   separator: {
     height: 1,

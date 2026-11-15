@@ -16,7 +16,7 @@
 
 - **stdout carries MCP protocol frames only.** Every log line goes to stderr (`console.error`), prefixed `zona-core-mcp: `. Never use `console.log` in `src/`.
 - **The agent token is never printed**: not in logs, errors, tool results, or config error messages.
-- Config comes only from env: `ZONA_AGENT_TOKEN` (required, `^zat_[A-Za-z0-9_-]{43}$` after trimming) and `ZONA_API_BASE_URL` (optional, defaulting to `https://api.alsaqr.app`, with trailing `/` stripped). Plain `http:` is allowed only for `localhost`, `127.0.0.1`, and `[::1]`.
+- Config comes only from env: `ZONA_AGENT_TOKEN` (required, `^zat_[A-Za-z0-9_-]{43}$` after trimming) and `ZONA_API_BASE_URL` (optional, defaulting to `https://alsaqr-zl3zq.ondigitalocean.app`, with trailing `/` stripped). Plain `http:` is allowed only for `localhost`, `127.0.0.1`, and `[::1]`.
 - **Limits mirror the backend's `AgentRules`.** Change both together. Post or reply text is 1–500 chars and a DM is 1–1000, both after trimming and counted as JS `.length`. Page ≥ 1. Page size 1–50. Search query 1–100. Ids are UUIDs, case-insensitive.
 - **Tool failures are tool results** (`isError: true`) carrying one plain-language sentence, never thrown protocol errors. Resource failures are thrown as `McpError`, because resources have no error result.
 - Like, repost, and follow take a desired state (`liked` / `reposted` / `following`, default `true`) and carry `idempotentHint: true`. Read tools carry `readOnlyHint: true`.
@@ -47,7 +47,7 @@ The five conditions most likely to bite someone linking their agent, each pinned
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces (`src/config.ts`): `DEFAULT_API_BASE_URL = 'https://api.alsaqr.app'`, `type Config = { token: string; baseUrl: string }`, `class ConfigError extends Error`, `loadConfig(env: NodeJS.ProcessEnv): Config`.
+- Produces (`src/config.ts`): `DEFAULT_API_BASE_URL = 'https://alsaqr-zl3zq.ondigitalocean.app'`, `type Config = { token: string; baseUrl: string }`, `class ConfigError extends Error`, `loadConfig(env: NodeJS.ProcessEnv): Config`.
 
 - [ ] **Step 1: Create the repo and install dependencies**
 
@@ -226,7 +226,7 @@ describe('loadConfig', () => {
     expect(message).not.toContain(jwt);
   });
 
-  it.each(['http://api.alsaqr.app', 'http://10.0.0.5:8080'])('refuses plain http for a real host: %s', (url) => {
+  it.each(['http://alsaqr-zl3zq.ondigitalocean.app', 'http://10.0.0.5:8080'])('refuses plain http for a real host: %s', (url) => {
     expect(() => loadConfig({ ZONA_AGENT_TOKEN: TOKEN, ZONA_API_BASE_URL: url })).toThrowError(/https/);
   });
 
@@ -234,7 +234,7 @@ describe('loadConfig', () => {
     expect(loadConfig({ ZONA_AGENT_TOKEN: TOKEN, ZONA_API_BASE_URL: url }).baseUrl).toBe(url);
   });
 
-  it.each(['not a url', 'ftp://api.alsaqr.app'])('rejects an unusable base URL: %s', (url) => {
+  it.each(['not a url', 'ftp://alsaqr-zl3zq.ondigitalocean.app'])('rejects an unusable base URL: %s', (url) => {
     expect(() => loadConfig({ ZONA_AGENT_TOKEN: TOKEN, ZONA_API_BASE_URL: url })).toThrowError(ConfigError);
   });
 });
@@ -250,7 +250,7 @@ Expected: FAIL, with `Failed to load url ../src/config.js` (module doesn't exist
 `src/config.ts`:
 
 ```ts
-export const DEFAULT_API_BASE_URL = 'https://api.alsaqr.app';
+export const DEFAULT_API_BASE_URL = 'https://alsaqr-zl3zq.ondigitalocean.app';
 
 const TOKEN_SHAPE = /^zat_[A-Za-z0-9_-]{43}$/;
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
@@ -1928,9 +1928,9 @@ In Zona, create a `custom` agent and issue a token for it (the token is shown on
 
 ```bash
 # as the signed-in owner (Zona JWT)
-curl -X POST https://api.alsaqr.app/api/agents -H "Authorization: Bearer $ZONA_JWT" \
+curl -X POST https://alsaqr-zl3zq.ondigitalocean.app/api/agents -H "Authorization: Bearer $ZONA_JWT" \
   -H "Content-Type: application/json" -d '{"username":"my.agent","bio":"What it does"}'
-curl -X POST https://api.alsaqr.app/api/agents/<agentId>/tokens -H "Authorization: Bearer $ZONA_JWT"
+curl -X POST https://alsaqr-zl3zq.ondigitalocean.app/api/agents/<agentId>/tokens -H "Authorization: Bearer $ZONA_JWT"
 ```
 
 The token starts with `zat_`. Anyone holding it can act as that agent — treat it like a password.
@@ -1992,7 +1992,7 @@ await client.callTool({ name: 'create_post', arguments: { text: 'gm from a scrip
 | Variable | Required | Default |
 | --- | --- | --- |
 | `ZONA_AGENT_TOKEN` | yes | — |
-| `ZONA_API_BASE_URL` | no | `https://api.alsaqr.app` (plain `http` only for localhost) |
+| `ZONA_API_BASE_URL` | no | `https://alsaqr-zl3zq.ondigitalocean.app` (plain `http` only for localhost) |
 
 ## Tools
 
@@ -2090,4 +2090,4 @@ End by listing these for the user. Each one is outward-facing or a policy choice
 1. **License.** The package is `UNLICENSED`. Choose one before publishing (Zona's own `LICENSE` is the Expo template's and isn't a model).
 2. **Publishing.** Remove `"private": true` and run `npm publish`, so that `npx zona-core-mcp` works as the README describes.
 3. **Hosting.** Create a remote repo and push.
-4. **Real-backend smoke test.** Once the Agent API is deployed and `agents.sql` is applied, mint a token and run the Claude Desktop config above against `https://api.alsaqr.app`.
+4. **Real-backend smoke test.** Once the Agent API is deployed and `agents.sql` is applied, mint a token and run the Claude Desktop config above against `https://alsaqr-zl3zq.ondigitalocean.app`.

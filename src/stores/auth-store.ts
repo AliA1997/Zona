@@ -5,6 +5,7 @@ import type { OAuthProvider, SessionUser, StoredIdentity } from '@/models/sessio
 import { signIn } from '@/utils/api/auth-api-client';
 import { sessionCheck } from '@/utils/api/user-api-client';
 import { auth } from '@/utils/auth';
+import { getSupabase } from '@/utils/infrastructure/supabase';
 import { startOAuth } from '@/utils/oauth';
 
 const PROVIDER_LABELS: Record<OAuthProvider, string> = {
@@ -97,21 +98,22 @@ export class AuthStore {
       await auth.setToken(accessToken);
 
       let sessionUser: SessionUser;
+      let identity: StoredIdentity;
       try {
         sessionUser = await sessionCheck(user.email);
+        identity = {
+          id: sessionUser.id,
+          username: sessionUser.username,
+          email: sessionUser.email,
+          avatar: sessionUser.avatar,
+        };
+        await auth.setIdentity(identity);
       } catch (error) {
-        // Never leave a token behind without an identity to go with it.
-        await auth.clearToken();
+        // Never leave half a session behind: if either the check or the identity
+        // write fails, clear both halves.
+        await this.clearStoredSession().catch(() => {});
         throw error;
       }
-
-      const identity: StoredIdentity = {
-        id: sessionUser.id,
-        username: sessionUser.username,
-        email: sessionUser.email,
-        avatar: sessionUser.avatar,
-      };
-      await auth.setIdentity(identity);
 
       runInAction(() => {
         this.identity = identity;
@@ -144,18 +146,28 @@ export class AuthStore {
     }
   };
 
+  // Sign out and the 401 path both land here. Local state is cleared first and
+  // unconditionally; the Supabase sign-out is best-effort and never awaited, so an
+  // offline device or missing config cannot stop the user from signing out.
+  // The backend JWT is not revoked server-side (no endpoint for it yet).
   resetAuthState = async (): Promise<void> => {
-    // No supabase.auth.signOut() call: with persistSession: false, Supabase's session
-    // lives in memory only and is never read again after the one-shot OAuth exchange —
-    // there's nothing there worth signing out of, and a network call here would risk
-    // this method throwing (and aborting before it clears the observables) if the
-    // device is offline when the user taps sign out.
-    await this.clearStoredSession();
-    runInAction(() => {
-      this.identity = undefined;
-      this.sessionUser = undefined;
-      this.authError = undefined;
-    });
+    try {
+      await this.clearStoredSession();
+    } finally {
+      runInAction(() => {
+        this.identity = undefined;
+        this.sessionUser = undefined;
+        this.authError = undefined;
+      });
+    }
+
+    try {
+      void getSupabase()
+        .auth.signOut({ scope: 'local' })
+        .catch(() => {});
+    } catch {
+      // Supabase not configured; nothing to sign out of.
+    }
   };
 
   private clearStoredSession = async (): Promise<void> => {

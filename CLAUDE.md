@@ -4,10 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-Scaffolded as an Expo (SDK 57) + Expo Router app, TypeScript, npm. Not yet a git repo. The
-navigation shell, design tokens, and five screens (Feed, Messages, Chat, Profile, Personalize)
-are wired up with mock/placeholder data — the real data layer (ported from the sibling projects
-below) has not been built yet. Real app icon/splash artwork is still the default Expo template's;
+Expo (SDK 58) + Expo Router app, TypeScript, npm, git (GitHub, PRs into `main`, CI in
+`.github/workflows/ci.yml`). Auth is built: Supabase OAuth (PKCE) exchanged for a backend JWT held
+in SecureStore, MobX `AuthStore`, redirect gate in `src/app/_layout.tsx`, sign out on Profile.
+The five screens (Feed, Messages, Chat, Profile, Personalize) still render mock data from
+`src/data/mock-agents.ts` — the feed data layer
+(`docs/superpowers/specs/2026-09-27-feed-data-layer-design.md`) has not been built yet. Open work is
+tracked in `docs/plans/2026-11-13-app-issues-plan.md`. Real app icon/splash artwork is still the default Expo template's;
 `assets/expo.icon/` and `assets/images/{icon,splash-icon,android-icon-*,favicon}.png` need real
 Zona branding before shipping.
 
@@ -24,7 +27,10 @@ Zona branding before shipping.
   target a platform directly.
 - `npx tsc --noEmit` — typecheck (no dedicated `typecheck` script exists yet).
 - `npm run lint` (`expo lint`) — ESLint via `eslint.config.js`.
-- No test runner is configured yet.
+- `npm test` — Jest (`jest-expo` preset). Tests sit next to the code as `*.test.ts`.
+- Required env (in `.env.local`): `EXPO_PUBLIC_API_BASE_URL`, `EXPO_PUBLIC_SUPABASE_URL`,
+  `EXPO_PUBLIC_SUPABASE_ANON_KEY`. If any is missing the app shows an "App not configured" screen;
+  there is no production fallback.
 
 ## What Zona is
 
